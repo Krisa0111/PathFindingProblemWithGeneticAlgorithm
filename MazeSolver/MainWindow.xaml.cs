@@ -15,6 +15,7 @@ namespace MazeSolver
         public const int MazeSize = 10;
         public const int CellSize = 30;
         public bool stopAlgorithm = false;
+        private int[] bestSolution;
 
         public Maze maze;
         public GeneticAlgorithm geneticAlgorithm;
@@ -62,7 +63,6 @@ namespace MazeSolver
             grid[3, 5] = 1;
             grid[5, 6] = 1;
             grid[7, 6] = 1;
-            grid[8, 6] = 1;
             grid[2, 7] = 1;
             grid[3, 7] = 1;
             grid[4, 7] = 1;
@@ -140,6 +140,7 @@ namespace MazeSolver
             List<int[]> population = geneticAlgorithm.InitializePopulation(maze);
             Random random = new Random();
             int generation = 0;
+            int[] bestSolution = null;
 
             DispatcherTimer timer = new DispatcherTimer();
             timer.Interval = TimeSpan.FromMilliseconds(100); // Adjust the delay here (e.g., 100 milliseconds)
@@ -160,9 +161,15 @@ namespace MazeSolver
 
                     population = nextGeneration;
 
+                    // Update the best solution
+                    int[] currentBestPath = population.OrderBy(p => geneticAlgorithm.CalculateFitness(p, maze)).First();
+                    if (bestSolution == null || geneticAlgorithm.CalculateFitness(currentBestPath, maze) < geneticAlgorithm.CalculateFitness(bestSolution, maze))
+                    {
+                        bestSolution = currentBestPath;
+                    }
+
                     // Visualize the current best path and generation
-                    int[] bestPath = population.OrderBy(p => geneticAlgorithm.CalculateFitness(p, maze)).First();
-                    geneticAlgorithm.VisualizePath(bestPath, maze, generation);
+                    geneticAlgorithm.VisualizePath(currentBestPath, maze, generation);
 
                     generation++;
                 }
@@ -171,8 +178,10 @@ namespace MazeSolver
                     timer.Stop();
 
                     // Visualize the best solution found after stopping
-                    int[] bestPath = population.OrderBy(p => geneticAlgorithm.CalculateFitness(p, maze)).First();
-                    geneticAlgorithm.VisualizePath(bestPath, maze, generation);
+                    if (bestSolution != null && HasReachedDestination(bestSolution, maze))
+                    {
+                        geneticAlgorithm.VisualizePath(bestSolution, maze, generation);
+                    }
                 }
             };
 
@@ -182,6 +191,45 @@ namespace MazeSolver
             await Task.Delay(Timeout.Infinite);
         }
 
+        private bool HasReachedDestination(int[] path, Maze maze)
+        {
+            int currentX = maze.StartX;
+            int currentY = maze.StartY;
+
+            for (int i = 0; i < path.Length; i++)
+            {
+                switch (path[i])
+                {
+                    case 0:
+                        currentX++;
+                        break;
+                    case 1:
+                        currentX--;
+                        break;
+                    case 2:
+                        currentY++;
+                        break;
+                    case 3:
+                        currentY--;
+                        break;
+                }
+
+                if (currentX == maze.EndX && currentY == maze.EndY)
+                {
+                    return true;
+                }
+
+                if (currentX < 0 || currentX >= maze.Grid.GetLength(0) ||
+                    currentY < 0 || currentY >= maze.Grid.GetLength(1) ||
+                    maze.Grid[currentX, currentY] == 1)
+                {
+                    // Hit a wall or went out of bounds
+                    return false;
+                }
+            }
+
+            return false; // Destination not reached
+        }
 
 
 
